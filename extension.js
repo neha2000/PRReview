@@ -1,49 +1,76 @@
 const vscode = require('vscode');
+const fs = require('fs');
+const path = require('path');
+const { exec } = require('child_process');
 
-class PRReviewProvider {
-    async reviewCode(pr_data) {
-        try {
-            const [model] = await vscode.lm.selectChatModels();
-            
-            // Create review prompt
-            const prompt = `Review this pull request and provide detailed feedback:
-                Title: ${pr_data.title}
-                Author: ${pr_data.user}
-                Changes: ${pr_data.total_changes} lines
+function activate(context) {
+    console.log('PR Review extension activated');
+    let disposable = vscode.commands.registerCommand('pr-review.start', async function () {
+        console.log('pr-review.start command invoked');
+        // Prompt for PR URL
+        const prUrl = await vscode.window.showInputBox({
+            prompt: 'Enter GitHub PR URL to review',
+            placeHolder: 'https://github.com/owner/repo/pull/123'
+        });
+        console.log('PR URL entered:', prUrl);
+        if (!prUrl) return;
 
-                Files Changed:
-                ${this._formatFiles(pr_data.files_changed)}
-
-                Please analyze:
-                1. Code quality and style
-                2. Potential bugs
-                3. Security concerns
-                4. Performance
-                5. Best practices
-            `;
-
-            // Get review from VS Code LM
-            const response = await model.sendRequest(prompt);
-            return response.text;
-        } catch (err) {
-            if (err instanceof vscode.LanguageModelError) {
-                return `Review Error: ${err.message}`;
+        // Run Python backend to fetch PR details
+        const pythonScript = path.join(context.extensionPath, 'pr_backend.py');
+        // Ensure the Python backend writes to a path inside the extension folder
+        const summaryPath = path.join(context.extensionPath, 'changes.txt');
+        console.log('Running Python script:', pythonScript, 'with output:', summaryPath);
+        exec(`python "${pythonScript}" "${prUrl}" "${summaryPath}"`, (err, stdout, stderr) => {
+            console.log('Python backend exit. err=', err, 'stdout=', stdout, 'stderr=', stderr);
+            if (err) {
+                vscode.window.showErrorMessage('Error running Python backend: ' + stderr);
+                return;
             }
-            throw err;
-        }
-    }
+            // Read PR details from pr_summary.md
+            fs.readFile(summaryPath, 'utf8', (err, prDetails) => {
+                if (err) {
+                    vscode.window.showErrorMessage('Could not read PR summary: ' + err.message);
+                    return;
+                }
+                // Read PR template
+                const templatePath = path.join(context.extensionPath, 'prtemplate.md');
+                fs.readFile(templatePath, 'utf8', (err, template) => {
+                    if (err) {
+                        vscode.window.showErrorMessage('Could not read PR template: ' + err.message);
+                        return;
+                    }
+                    // Insert PR details into template
+                    const finalContent = template.replace('<!-- The extension will insert PR details here automatically -->', prDetails);
+                    // Write to a temp file and open in editor
+                    const tempFile = path.join(context.extensionPath, 'pr_review.md');
+                    fs.writeFile(tempFile, finalContent, err => {
+                        if (err) {
+                            vscode.window.showErrorMessage('Could not write review file: ' + err.message);
+                            return;
+                        }
+                        vscode.workspace.openTextDocument(tempFile).then(doc => {
+                            vscode.window.showTextDocument(doc);
+                            vscode.window.showInformationMessage('PR review checklist and details opened.'
+                               +'\n  Use Copilot Chat to review with following Prompt :'
+                                + '\n\n' + 'Use PR Details section to certify sections in Pull Request Review checklist .'
+                                +'\n Certify by yes/no update . For every yes/no give the reason'
+                            );
+                            // Auto-trigger Copilot Chat on the opened file
+                            vscode.commands.executeCommand('github.copilot.chat.openPanel');
+                        });
+                    });
+                });
+            });
+        });
+    });
+    context.subscriptions.push(disposable);
+}
 
-    _formatFiles(files) {
-        return files.map(file => 
-            `File: ${file.filename}
-             Status: ${file.status}
-             Changes: +${file.additions} -${file.deletions}
-             Patch:
-             ${file.patch || 'No patch available'}`
-        ).join('\n\n');
-    }
+function deactivate() {
+    console.log('PR Review extension deactivated');
 }
 
 module.exports = {
-    PRReviewProvider
+    activate,
+    deactivate
 };

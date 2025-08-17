@@ -1,25 +1,22 @@
 {
-    "name": "pr-reviewer",
-    "displayName": "PR Reviewer",
-    "description": "Review pull requests using VS Code's Language Model",
-    "version": "0.0.1",
-    "engines": {
-        "vscode": "^1.85.0"
-    },
-    "activationEvents": ["onCommand:pr-reviewer.review"],
-    "main": "./extension.js",
-    "contributes": {
-        "commands": [{
-            "command": "pr-reviewer.review",
-            "title": "Review Pull Request"
-        }]
-    },
-    "scripts": {
-        "lint": "eslint .",
-        "test": "node ./test/runTest.js"
-    },
-    "devDependencies": {
-        "@types/vscode": "^1.85.0",
-        "eslint": "^8.56.0"
-    }
+  "name": "pr-review",
+  "displayName": "PR Review with Copilot Chat",
+  "description": "Review GitHub PRs using Copilot Chat in VS Code",
+  "version": "0.0.1",
+  "main": "./extension.js",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "activationEvents": [
+    "onCommand:pr-review.start"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "pr-review.start",
+        "title": "PR Review: Start"
+      }
+    ]
+  },
+  "dependencies": {}
 }

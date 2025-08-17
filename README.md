@@ -1,17 +1,14 @@
-# AI PR Review Agent
+# PR Review with Copilot Chat
 
-This project is an AI agent for reviewing pull requests using the Saunet model.
-
-## Features
-- Integrates Saunet model for code review
-- Ingests PR data
-- Provides automated review feedback
-
-## Setup
-1. Install Python 3.8+
-2. (Optional) Install Saunet model dependencies
-3. Run `main.py` to start the agent
+This VS Code extension lets you review GitHub pull requests using Copilot Chat.
 
 ## Usage
-- Place your PR data in the appropriate format
-- Run the agent to get review feedback
+- Run the `PR Review: Start` command.
+- Enter a GitHub PR URL.
+- The extension fetches PR details and opens a markdown summary.
+- Use Copilot Chat to review the PR summary in the editor.
+
+## Requirements
+- Python and PyGithub installed
+- GitHub token set in your environment
+- GitHub Copilot Chat extension installed
